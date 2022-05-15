@@ -88,14 +88,6 @@ class UsrpApplicationLayer(GenericModel):
         evt = Event(self, EventTypes.MFRT, broadcast_message)
         return evt
 
-    def show_stats(self):
-        print(f"Node : {self.componentinstancenumber} ")
-        print(f"Sent messages : {self.sent_message_counter}")
-        print(f"Successfuly sent messages : {self.succ_sent_message_counter}")
-
-        succ_percent = (self.succ_sent_message_counter/self.sent_message_counter)*100
-        print(f"Success percantage: {succ_percent}% ")
-
 
 class UsrpNode(GenericModel):
 
@@ -129,6 +121,14 @@ class UsrpNode(GenericModel):
 
         # self.phy.connect_me_to_component(ConnectorTypes.DOWN, self)
         # self.connect_me_to_component(ConnectorTypes.DOWN, self.appl)
+
+    def show_stats(self):
+        print(f"Node : {self.componentinstancenumber} ")
+        print(f"Sent messages : {self.appl.sent_message_counter}")
+        print(f"Successfuly sent messages : {self.appl.succ_sent_message_counter}")
+
+        succ_percent = (self.appl.succ_sent_message_counter/self.appl.sent_message_counter)*100
+        print(f"Success percantage: {succ_percent}% ")
 
 
 def run_test(topology: Topology, num_of_msg: int, wait_time: int):
