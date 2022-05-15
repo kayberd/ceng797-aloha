@@ -153,7 +153,7 @@ def main():
     topo.construct_winslab_topology_without_channels(num_of_nodes, UsrpNode)
     topo.start()
 
-    num_of_msg = 50
+    num_of_msg = 100
     run_test(topo, num_of_msg, wait_time)
 
 
