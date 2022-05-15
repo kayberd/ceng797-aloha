@@ -90,6 +90,14 @@ class UsrpApplicationLayer(GenericModel):
         evt = Event(self, EventTypes.MFRT, broadcast_message)
         return evt
 
+    def show_stats(self):
+        print(f"Node : {self.componentinstancenumber} ")
+        print(f"Sent messages : {self.sent_message_counter}")
+        print(f"Successfuly sent messages : {self.succ_sent_message_counter}")
+
+        succ_percent = (self.succ_sent_message_counter/self.sent_message_counter)*100
+        print(f"Success percantage: {succ_percent}% ")
+
 
 class UsrpNode(GenericModel):
 
@@ -125,23 +133,28 @@ class UsrpNode(GenericModel):
         # self.connect_me_to_component(ConnectorTypes.DOWN, self.appl)
 
 
-def run_test(topology: Topology, num_of_msg: int,):
+def run_test(topology: Topology, num_of_msg: int, wait_time: int):
 
     for msg_index in range(0, num_of_msg):
         rand_node: UsrpNode = topology.nodes[random.randint(0, len(topology.nodes)-1)]
         broadcast_event = Event(rand_node, UsrpApplicationLayerEventTypes.STARTBROADCAST, eventcontent=None)
         rand_node.appl.send_self(broadcast_event)
-        time.sleep(1)
+        time.sleep(wait_time)
+
     print("Test has been completed !!!")
+    print("Showing staticstics per node:")
+    for node in topology.nodes:
+        node.show_stats()
 
 
 def main():
 
+    num_of_nodes = 4
     topo = Topology()
-    topo.construct_winslab_topology_without_channels(4, UsrpNode)
+    topo.construct_winslab_topology_without_channels(num_of_nodes, UsrpNode)
     topo.start()
 
-    num_of_msg = 10
+    num_of_msg = 50
     run_test(topo, num_of_msg)
 
 
