@@ -1,27 +1,26 @@
 import os
 import sys
-import time
-import random
+import time, random, math
 from enum import Enum
-
-sys.path.insert(0, os.getcwd())
-
-import networkx as nx
-import matplotlib.pyplot as plt
-
+from pickle import FALSE
 
 from adhoccomputing.GenericModel import GenericModel
-from adhoccomputing.Generics import Event, EventTypes, ConnectorTypes, GenericMessageHeader, GenericMessagePayload, GenericMessage
+from adhoccomputing.Generics import Event, EventTypes, ConnectorTypes, GenericMessageHeader, GenericMessage
 from adhoccomputing.Experimentation.Topology import Topology
-from adhoccomputing.Networking.LinkLayer.GenericLinkLayer import GenericLinkLayer
-from adhoccomputing.Networking.NetworkLayer.GenericNetworkLayer import GenericNetworkLayer
-from adhoccomputing.Networking.LogicalChannels.GenericChannel import GenericChannel
+from adhoccomputing.Networking.PhysicalLayer.UsrpB210OfdmFlexFramePhy import UsrpB210OfdmFlexFramePhy
+from adhoccomputing.Networking.MacProtocol.CSMA import MacCsmaPPersistent, MacCsmaPPersistentConfigurationParameters
+
+
+# registry = ComponentRegistry()
+# from ahc.Channels.Channels import FIFOBroadcastPerfectChannel
+# from ahc.EttusUsrp.UhdUtils import AhcUhdUtils
+
+# framers = FramerObjects()
 
 
 # define your own message types
 class ApplicationLayerMessageTypes(Enum):
-    PROPOSE = "PROPOSE"
-    ACCEPT = "ACCEPT"
+    BROADCAST = "BROADCAST"
 
 
 # define your own message header structure
@@ -29,120 +28,107 @@ class ApplicationLayerMessageHeader(GenericMessageHeader):
     pass
 
 
-# define your own message payload structure
-class ApplicationLayerMessagePayload(GenericMessagePayload):
-    pass
+class UsrpApplicationLayerEventTypes(Enum):
+    STARTBROADCAST = "startbroadcast"
 
 
-class ApplicationLayerComponent(GenericModel):
+class UsrpApplicationLayer(GenericModel):
     def on_init(self, eventobj: Event):
-        print(f"Initializing {self.componentname}.{self.componentinstancenumber}")
+        self.counter = 0
 
-        if self.componentinstancenumber == 0:
-            # destination = random.randint(len(Topology.G.nodes))
-            destination = 1
-            hdr = ApplicationLayerMessageHeader(ApplicationLayerMessageTypes.PROPOSE, self.componentinstancenumber,
-                                                destination)
-            payload = ApplicationLayerMessagePayload("23")
-            proposalmessage = GenericMessage(hdr, payload)
-            randdelay = random.randint(0, 5)
-            time.sleep(randdelay)
-            self.send_self(Event(self, "propose", proposalmessage))
-        else:
-            pass
-
-    def on_message_from_bottom(self, eventobj: Event):
-        try:
-            applmessage = eventobj.eventcontent
-            hdr = applmessage.header
-            if hdr.messagetype == ApplicationLayerMessageTypes.ACCEPT:
-                print(
-                    f"Node-{self.componentinstancenumber} says Node-{hdr.messagefrom} has sent {hdr.messagetype} message")
-            elif hdr.messagetype == ApplicationLayerMessageTypes.PROPOSE:
-                print(
-                    f"Node-{self.componentinstancenumber} says Node-{hdr.messagefrom} has sent {hdr.messagetype} message")
-        except AttributeError:
-            print("Attribute Error")
-
-    # print(f"{self.componentname}.{self.componentinstancenumber}: Gotton message {eventobj.content} ")
-    # value = eventobj.content.value
-    # value += 1
-    # newmsg = MessageContent( value )
-    # myevent = Event( self, "agree", newmsg )
-    # self.trigger_event(myevent)
-
-    def on_propose(self, eventobj: Event):
-        destination = 1
-        hdr = ApplicationLayerMessageHeader(ApplicationLayerMessageTypes.ACCEPT, self.componentinstancenumber,
-                                            destination)
-        payload = ApplicationLayerMessagePayload("23")
-        proposalmessage = GenericMessage(hdr, payload)
-        self.send_down(Event(self, EventTypes.MFRT, proposalmessage))
-
-    def on_agree(self, eventobj: Event):
-        print(f"Agreed on {eventobj.eventcontent}")
-
-    def on_timer_expired(self, eventobj: Event):
-        pass
-
-    def __init__(self, componentname, componentinstancenumber, context=None, configurationparameters=None, num_worker_threads=1, topology=None):
-        super().__init__(componentname, componentinstancenumber, context, configurationparameters, num_worker_threads, topology)
-        self.eventhandlers["propose"] = self.on_propose
-        self.eventhandlers["agree"] = self.on_agree
-        self.eventhandlers["timerexpired"] = self.on_timer_expired
-
-
-class AdHocNode(GenericModel):
-
-    def on_init(self, eventobj: Event):
-        print(f"Initializing {self.componentname}.{self.componentinstancenumber}")
+    def __init__(self, componentname, componentinstancenumber, context=None, configurationparameters=None,
+                 num_worker_threads=1, topology=None):
+        super().__init__(componentname, componentinstancenumber, context, configurationparameters, num_worker_threads,
+                         topology)
+        self.eventhandlers[UsrpApplicationLayerEventTypes.STARTBROADCAST] = self.on_startbroadcast
 
     def on_message_from_top(self, eventobj: Event):
+        # print(f"I am {self.componentname}.{self.componentinstancenumber},sending down eventcontent={eventobj.eventcontent}\n")
         self.send_down(Event(self, EventTypes.MFRT, eventobj.eventcontent))
 
     def on_message_from_bottom(self, eventobj: Event):
-        self.send_up(Event(self, EventTypes.MFRB, eventobj.eventcontent))
+        evt = Event(self, EventTypes.MFRT, eventobj.eventcontent)
+        print(
+            f"I am Node.{self.componentinstancenumber}, received from Node.{eventobj.eventcontent.header.messagefrom} a message: {eventobj.eventcontent.payload}")
+        if self.componentinstancenumber == 1:
+            evt.eventcontent.header.messageto = 0
+            evt.eventcontent.header.messagefrom = 1
+        else:
+            evt.eventcontent.header.messageto = 1
+            evt.eventcontent.header.messagefrom = 0
+        evt.eventcontent.payload = eventobj.eventcontent.payload
+        # print(f"I am {self.componentname}.{self.componentinstancenumber}, sending down eventcontent={eventobj.eventcontent.payload}\n")
+        self.send_down(evt)  # PINGPONG
 
-    def __init__(self, componentname, componentinstancenumber, context=None, configurationparameters=None, num_worker_threads=1, topology=None):
-        super().__init__(componentname, componentinstancenumber, context, configurationparameters, num_worker_threads, topology)
+    def on_startbroadcast(self, eventobj: Event):
+        if self.componentinstancenumber == 1:
+            hdr = ApplicationLayerMessageHeader(ApplicationLayerMessageTypes.BROADCAST, 1, 0)
+        else:
+            hdr = ApplicationLayerMessageHeader(ApplicationLayerMessageTypes.BROADCAST, 0, 1)
+        self.counter = self.counter + 1
+
+        payload = "BMSG-" + str(self.counter)
+        broadcastmessage = GenericMessage(hdr, payload)
+        evt = Event(self, EventTypes.MFRT, broadcastmessage)
+        # time.sleep(3)
+        self.send_down(evt)
+        # print("Starting broadcast")
+
+
+class UsrpNode(GenericModel):
+    counter = 0
+
+    def on_init(self, eventobj: Event):
+        pass
+
+    def __init__(self, componentname, componentinstancenumber, context=None, configurationparameters=None,
+                 num_worker_threads=1, topology=None):
+        super().__init__(componentname, componentinstancenumber, context, configurationparameters, num_worker_threads,
+                         topology)
         # SUBCOMPONENTS
-        self.appllayer = ApplicationLayerComponent("ApplicationLayer", componentinstancenumber, topology=topology)
-        self.netlayer = GenericNetworkLayer("NetworkLayer", componentinstancenumber, topology=topology)
-        self.linklayer = GenericLinkLayer("LinkLayer", componentinstancenumber, topology=topology)
-        # self.failuredetect = GenericFailureDetector("FailureDetector", componentid)
 
-        self.components.append(self.appllayer)
-        self.components.append(self.netlayer)
-        self.components.append(self.linklayer)
-        
+        macconfig = MacCsmaPPersistentConfigurationParameters(0.5)
+
+        self.appl = UsrpApplicationLayer("UsrpApplicationLayer", componentinstancenumber, topology=topology)
+        self.phy = UsrpB210OfdmFlexFramePhy("UsrpB210OfdmFlexFramePhy", componentinstancenumber, topology=topology)
+        self.mac = MacCsmaPPersistent("MacCsmaPPersistent", componentinstancenumber, configurationparameters=macconfig,
+                                      uhd=self.phy.ahcuhd, topology=topology)
+
+        self.components.append(self.appl)
+        self.components.append(self.phy)
+        self.components.append(self.mac)
+
         # CONNECTIONS AMONG SUBCOMPONENTS
-        self.appllayer.connect_me_to_component(ConnectorTypes.DOWN, self.netlayer)
-        # self.failuredetect.connectMeToComponent(PortNames.DOWN, self.netlayer)
-        self.netlayer.connect_me_to_component(ConnectorTypes.UP, self.appllayer)
-        # self.netlayer.connectMeToComponent(PortNames.UP, self.failuredetect)
-        self.netlayer.connect_me_to_component(ConnectorTypes.DOWN, self.linklayer)
-        self.linklayer.connect_me_to_component(ConnectorTypes.UP, self.netlayer)
+        self.appl.connect_me_to_component(ConnectorTypes.UP, self)  # Not required if nodemodel will do nothing
+        self.appl.connect_me_to_component(ConnectorTypes.DOWN, self.mac)
+
+        self.mac.connect_me_to_component(ConnectorTypes.UP, self.appl)
+        self.mac.connect_me_to_component(ConnectorTypes.DOWN, self.phy)
 
         # Connect the bottom component to the composite component....
-        self.linklayer.connect_me_to_component(ConnectorTypes.DOWN, self)
-        self.connect_me_to_component(ConnectorTypes.UP, self.linklayer)
+        self.phy.connect_me_to_component(ConnectorTypes.UP, self.mac)
+        self.phy.connect_me_to_component(ConnectorTypes.DOWN, self)
+
+        # self.phy.connect_me_to_component(ConnectorTypes.DOWN, self)
+        # self.connect_me_to_component(ConnectorTypes.DOWN, self.appl)
 
 
 def main():
-    # G = nx.Graph()
-    # G.add_nodes_from([1, 2])
-    # G.add_edges_from([(1, 2)])
-    # nx.draw(G, with_labels=True, font_weight='bold')
-    # plt.draw()
-    G = nx.random_geometric_graph(19, 0.5)
-    nx.draw(G, with_labels=True, font_weight='bold')
-    plt.draw()
-
     topo = Topology()
-    topo.construct_from_graph(G, AdHocNode, GenericChannel)
-    topo.start()
+    # Note that the topology has to specific: usrp winslab_b210_0 is run by instance 0 of the component
+    # Therefore, the usrps have to have names winslab_b210_x where x \in (0 to nodecount-1)
+    topo.construct_winslab_topology_without_channels(4, UsrpNode)
+    # topo.construct_winslab_topology_with_channels(2, UsrpNode, FIFOBroadcastPerfectChannel)
 
-    plt.show()  # while (True): pass
+    # time.sleep(1)
+    # topo.nodes[0].send_self(Event(topo.nodes[0], UsrpNodeEventTypes.STARTBROADCAST, None))
+
+    topo.start()
+    i = 0
+    while (i < 10):
+        topo.nodes[1].appl.send_self(Event(topo.nodes[0], UsrpApplicationLayerEventTypes.STARTBROADCAST, None))
+        time.sleep(1)
+        i = i + 1
 
 
 if __name__ == "__main__":
