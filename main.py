@@ -150,12 +150,13 @@ def run_test(topology: Topology, num_of_msg: int, wait_time: int):
 def main():
 
     num_of_nodes = 4
+    wait_time = 1
     topo = Topology()
     topo.construct_winslab_topology_without_channels(num_of_nodes, UsrpNode)
     topo.start()
 
     num_of_msg = 50
-    run_test(topo, num_of_msg)
+    run_test(topo, num_of_msg,wait_time)
 
 
 if __name__ == "__main__":
