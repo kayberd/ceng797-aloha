@@ -1,14 +1,12 @@
-import os
-import sys
-import time, random, math
+import random
+import time
 from enum import Enum
-from pickle import FALSE
 
+from adhoccomputing.Experimentation.Topology import Topology
 from adhoccomputing.GenericModel import GenericModel
 from adhoccomputing.Generics import Event, EventTypes, ConnectorTypes, GenericMessageHeader, GenericMessage
-from adhoccomputing.Experimentation.Topology import Topology
-from adhoccomputing.Networking.PhysicalLayer.UsrpB210OfdmFlexFramePhy import UsrpB210OfdmFlexFramePhy
 from adhoccomputing.Networking.MacProtocol.CSMA import MacCsmaPPersistent, MacCsmaPPersistentConfigurationParameters
+from adhoccomputing.Networking.PhysicalLayer.UsrpB210OfdmFlexFramePhy import UsrpB210OfdmFlexFramePhy
 
 
 # registry = ComponentRegistry()
@@ -70,7 +68,7 @@ class UsrpApplicationLayer(GenericModel):
         while dest_node == self.componentinstancenumber:
             dest_node = random.randint(0, self.node_count - 1)
 
-        frame = self.create_frame(dest_node, eventobj)
+        frame = self.create_frame(dest_node)
         print(f"I am Node-{self.componentinstancenumber}, sending DATA to Node-{dest_node}")
         self.send_down(frame)
 
@@ -82,7 +80,7 @@ class UsrpApplicationLayer(GenericModel):
         evt.eventcontent.payload = eventobj.eventcontent.payload
         return evt
 
-    def create_frame(self, destination_node, eventobj: Event) -> Event:
+    def create_frame(self, destination_node) -> Event:
         header = GenericMessageHeader(ApplicationLayerMessageTypes.DATA, self.componentinstancenumber, destination_node)
         self.sent_message_counter += 1
         payload = ""
@@ -156,7 +154,7 @@ def main():
     topo.start()
 
     num_of_msg = 50
-    run_test(topo, num_of_msg,wait_time)
+    run_test(topo, num_of_msg, wait_time)
 
 
 if __name__ == "__main__":
