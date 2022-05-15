@@ -141,7 +141,7 @@ def run_test(topology: Topology, num_of_msg: int, wait_time: int):
 
     print("Test has been completed !!!")
     print("Showing staticstics per node:")
-    for node in topology.nodes:
+    for (index, node) in topology.nodes.items():
         node.show_stats()
 
 
