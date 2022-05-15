@@ -36,7 +36,7 @@ class UsrpApplicationLayerEventTypes(Enum):
 
 
 class UsrpApplicationLayer(GenericModel):
-    node_count = 10
+    node_count = 4
 
     def __init__(self, componentname, componentinstancenumber, context=None, configurationparameters=None,
                  num_worker_threads=1, topology=None):
