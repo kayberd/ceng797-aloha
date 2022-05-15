@@ -126,7 +126,7 @@ def run_test(topology:Topology,num_of_msg:int,):
 
     for msg_index in range(0,num_of_msg):
         rand_node: UsrpNode = topology.nodes[random.randint(0, len(topology.nodes)-1)]
-        broadcast_event = Event(rand_node,UsrpApplicationLayerEventTypes.STARTBROADCAST)
+        broadcast_event = Event(rand_node, UsrpApplicationLayerEventTypes.STARTBROADCAST, eventcontent=None)
         rand_node.appl.send_self(broadcast_event)
 
 
