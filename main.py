@@ -101,7 +101,7 @@ class UsrpNode(GenericModel):
 
         self.appl = UsrpApplicationLayer("UsrpApplicationLayer", componentinstancenumber, topology=topology)
         self.phy = UsrpB210OfdmFlexFramePhy("UsrpB210OfdmFlexFramePhy", componentinstancenumber, topology=topology)
-        self.mac = MacCsmaPPersistent("MacCsmaPPersistent", componentinstancenumber, configurationparameters=macconfig,
+        self.mac = ALOHA("AlohaMacLayer", componentinstancenumber, configurationparameters=macconfig,
                                       uhd=self.phy.ahcuhd, topology=topology)
 
         self.components.append(self.appl)
